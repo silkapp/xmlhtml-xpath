@@ -1,16 +1,34 @@
-{-# LANGUAGE TypeOperators, Arrows #-}
+{-# LANGUAGE
+    TypeOperators
+  , Arrows
+  , DeriveFunctor
+  , DeriveFoldable
+  , DeriveTraversable
+  , FlexibleContexts
+  , TemplateHaskell
+  #-}
 {- | List arrows for querying, creating and modifying XML/HTML trees.  -}
 module Text.XmlHtml.Arrow
 (
 
+-- * Run an arrow.
+  run
+
 -- * Selection.
 
-  tag
-, children
+, name
 , attributes
+, children
 , key
 , value
 , text
+
+-- * Going up and side-ways.
+
+, parent
+, root
+-- , lefts
+-- , rights
 
 -- * Filter based on type.
 
@@ -63,136 +81,162 @@ module Text.XmlHtml.Arrow
 )
 where
 
+import Control.Applicative
 import Control.Arrow
-import Control.Arrow.ArrowList
+import Control.Arrow.ArrowF
+import Control.Arrow.List
 import Control.Category
 import Data.ByteString (ByteString)
-import Data.Monoid
+import Data.Foldable hiding (elem)
 import Data.Text (Text)
-import Prelude hiding (elem, (.), id)
+import Data.Traversable
+import Prelude hiding (elem, const, (.), id, mapM)
 import Text.XmlHtml (Node)
 
 import qualified Text.XmlHtml as X
 
 type Attribute = (Text, Text)
 
-tag :: ArrowList (~>) => Node ~> Text
-tag = arr X.elementTag . isElem
+data Z a = Z
+  { focus     :: a
+  , ancestors :: [Node]
+--   , lefts     :: [Node]
+--   , rights    :: [Node]
+  } deriving (Functor, Foldable, Traversable)
 
-children :: ArrowList (~>) => Node ~> Node
-children = arrL X.elementChildren . isElem
+mkZ :: Arrow (~>) => a ~> Z a
+mkZ = arr (\a -> Z a [])
 
-attributes :: ArrowList (~>) => Node ~> Attribute
-attributes = arrL X.elementAttrs . isElem
+run :: ListArrow (Z a) (Z b) -> [a] -> [b]
+run a = map focus . runListArrow (a . mkZ . embed)
 
-isElem, isText, isComment :: ArrowList (~>) => Node ~> Node
-isElem    = isA (\c -> case c of X.Element  {} -> True; _ -> False)
-isText    = isA (\c -> case c of X.TextNode {} -> True; _ -> False)
-isComment = isA (\c -> case c of X.Comment  {} -> True; _ -> False)
+name :: (ArrowF f (~>), Alternative f) => Z Node ~> Z Text
+name = arr (fmap X.elementTag) . isElem
 
-key :: Arrow (~>) => Attribute ~> Text
-key = arr fst
+children :: ArrowF [] (~>) => Z Node ~> Z Node
+children = embed . arr (\(Z x xs) -> let ys = x:xs in (\c -> Z c ys) <$> X.elementChildren x) . isElem
 
-value :: Arrow (~>) => Attribute ~> Text
-value = arr snd
+attributes :: ArrowF [] (~>) => Z Node ~> Z Attribute
+attributes = embed . arr (\(Z x xs) -> let ys = x:xs in flip Z ys <$> X.elementAttrs x) . isElem
 
-text :: ArrowList (~>) => Node ~> Text
-text = arrL (\c -> case c of X.TextNode t -> [t]; _ -> [])
+isElem, isText, isComment :: (ArrowF f (~>), Alternative f) => Z Node ~> Z Node
+isElem    = isA (\z -> case focus z of X.Element  {} -> True; _ -> False)
+isText    = isA (\z -> case focus z of X.TextNode {} -> True; _ -> False)
+isComment = isA (\z -> case focus z of X.Comment  {} -> True; _ -> False)
 
-elem :: ArrowList (~>) => (Text -> Bool) -> Node ~> Node
-elem f = arrL (\n -> case n of X.Element e _ _ | f e -> [n]; _ -> [])
+key :: Arrow (~>) => Z Attribute ~> Z Text
+key = arr (fmap fst)
 
-attr :: (ArrowList (~>), ArrowChoice (~>)) => (Text -> Bool) -> Node ~> Text
-attr f = (isA f . key `guards` value) . attributes
+value :: Arrow (~>) => Z Attribute ~> Z Text
+value = arr (fmap snd)
 
-child :: ArrowList (~>) => (Text -> Bool) -> Node ~> Node
+text :: ArrowF [] (~>) => Z Node ~> Z Text
+text = embed . arr (mapM (\c -> case c of X.TextNode t -> [t]; _ -> []))
+
+elem :: ArrowF [] (~>) => (Text -> Bool) -> Z Node ~> Z Node
+elem f = embed . arr (mapM (\n -> case n of X.Element e _ _ | f e -> [n]; _ -> []))
+
+attr :: (ArrowF [] (~>), ArrowChoice (~>)) => (Text -> Bool) -> Z Node ~> Z Text
+attr f = (isA (f . focus) . key `guards` value) . attributes
+
+child :: ArrowF [] (~>) => (Text -> Bool) -> Z Node ~> Z Node
 child f = elem f . children
 
-hasAttr :: (ArrowList (~>), ArrowChoice (~>)) => (Text -> Bool) -> Node ~> Node
-hasAttr f = filterA (isA f . key . attributes)
+hasAttr :: (ArrowF [] (~>), ArrowChoice (~>)) => (Text -> Bool) -> Z Node ~> Z Node
+hasAttr f = filterA (isA (f . focus) . key . attributes)
 
 ----------------
 
-deep :: (ArrowList (~>), ArrowPlus (~>)) => (Node ~> a) -> (Node ~> a)
+parent :: ArrowF [] (~>) => Z a ~> Z Node
+parent = embed . arr (\z -> case ancestors z of x:xs -> [Z x xs]; _ -> [])
+
+root :: ArrowF [] (~>) => Z a ~> Z Node
+root = mkZ . embed . arr (take 1 . reverse . ancestors)
+
+----------------
+
+deep :: (ArrowF [] (~>), ArrowPlus (~>)) => (Z Node ~> a) -> Z Node ~> a
 deep e = e <+> deep e . children
 
-deepWhen :: (ArrowList (~>), ArrowPlus (~>), ArrowChoice (~>)) => Node ~> c -> Node ~> a -> Node ~> a
+deepWhen :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => (Z Node ~> c) -> Z Node ~> a -> Z Node ~> a
 deepWhen g e = e <+> g `guards` deepWhen g e . children
 
-deepText :: (ArrowPlus (~>), ArrowList (~>)) => Node ~> Text
-deepText = arr mconcat . list (deep text)
+deepText :: (ArrowF [] (~>), ArrowPlus (~>)) => Z Node ~> Z Text
+deepText = deep text
 
 ----------------
 
-toElem :: (ArrowPlus (~>), ArrowList (~>)) => (a ~> Text) -> [a ~> Attribute] -> [a ~> Node] -> a ~> Node
+-- TODO: how to dertermine the zipper evironment for the newly created?
+
+toElem :: (ArrowF [] (~>), ArrowPlus (~>)) => (a ~> Z Text) -> [a ~> Z Attribute] -> [a ~> Z Node] -> a ~> Z Node
 toElem q as cs = proc i ->
-  do n <- q -< i
-     a <- list (concatA as) -< i
-     c <- list (concatA cs) -< i
-     id -< X.Element n a c
+  do n <- arr focus . q -< i
+     a <- observe (arr focus . concatA as) -< i
+     c <- observe (arr focus . concatA cs) -< i
+     mkZ -< X.Element n a c
 
-toAttr :: Arrow (~>) => (a ~> Text) -> (a ~> Text) -> a ~> Attribute
+toAttr :: Arrow (~>) => (a ~> Z Text) -> (a ~> Z Text) -> a ~> Z Attribute
 toAttr q s = proc i ->
-  do n <- q -< i
-     v <- s -< i
-     id -< (n, v)
+  do n <- arr focus . q -< i
+     v <- arr focus . s -< i
+     mkZ -< (n, v)
 
-toText :: Arrow (~>) => Text ~> Node
-toText = arr X.TextNode
+toText :: Arrow (~>) => Z Text ~> Z Node
+toText = arr (fmap X.TextNode)
 
 ----------------
 
-mkElem :: (ArrowPlus (~>), ArrowList (~>)) => Text -> [a ~> Attribute] -> [a ~> Node] -> a ~> Node
-mkElem q = toElem (arr (const q))
+mkElem :: (ArrowF [] (~>), ArrowPlus (~>)) => Text -> [a ~> Z Attribute] -> [a ~> Z Node] -> a ~> Z Node
+mkElem q = toElem (mkZ . const q)
 
-mkAttr :: Arrow (~>) => Text -> Text ~> Attribute
-mkAttr k = toAttr (arr (const k)) id
+mkAttr :: Arrow (~>) => Text -> Z Text ~> Z Attribute
+mkAttr k = toAttr (mkZ . const k) id
 
-mkAttrValue :: Arrow (~>) => Text -> Text -> a ~> Attribute
-mkAttrValue k v = mkAttr k . arr (const v)
+mkAttrValue :: Arrow (~>) => Text -> Text -> a ~> Z Attribute
+mkAttrValue k v = mkAttr k . mkZ . const v
 
-mkText :: Arrow (~>) => Text -> a ~> Node
-mkText t = toText . arr (const t)
+mkText :: Arrow (~>) => Text -> a ~> Z Node
+mkText t = toText . mkZ . const t
 
 ----------------
 
 -- | Process the list of children of an element.
 
-processChildren :: (ArrowPlus (~>), ArrowList (~>), ArrowChoice (~>)) => [Node] ~> [Node] -> Node ~> Node
-processChildren a = toElem tag [attributes] [unlist . a . list children]
+processChildren :: (ArrowF [] (~>), ArrowPlus (~>)) => ([Z Node] ~> [Z Node]) -> Z Node ~> Z Node
+processChildren a = toElem name [attributes] [embed . a . observe children]
 
 -- | Process every child of an element one by one.
 
-processChild :: (ArrowPlus (~>), ArrowList (~>), ArrowChoice (~>)) => Node ~> Node -> Node ~> Node
-processChild a = toElem tag [attributes] [a . children]
+processChild :: (ArrowF [] (~>), ArrowPlus (~>)) => (Z Node ~> Z Node) -> Z Node ~> Z Node
+processChild a = toElem name [attributes] [a . children]
 
 -- | If the condition holds, apply the arrow and continue processing the
 -- children recursively with the same condition. Otherwise, do nothing and stop
 -- recursing.
 
-processDeep :: (ArrowPlus (~>), ArrowList (~>), ArrowChoice (~>)) => Node ~> c -> Node ~> Node -> Node ~> Node
-processDeep c a = (processChild (processDeep c a) . a) `when` c
+processDeep :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => (Z Node ~> c) -> (Z Node ~> Z Node) -> Z Node ~> Z Node
+processDeep c a = processChild (processDeep c a) . a  `when` c
 
 -- | Process the text of text node.
 
-processText :: ArrowList (~>) => Text ~> Text -> Node ~> Node
+processText :: ArrowF [] (~>) => (Z Text ~> Z Text) -> Z Node ~> Z Node
 processText a = toText . a . text
 
 -- | Process the list of attributes of an element.
 
-processAttrs :: (ArrowPlus (~>), ArrowList (~>)) => ([Attribute] ~> [Attribute]) -> Node ~> Node
-processAttrs a = toElem tag [unlist . a . list attributes] [children]
+processAttrs :: (ArrowF [] (~>), ArrowPlus (~>)) => ([Z Attribute] ~> [Z Attribute]) -> Z Node ~> Z Node
+processAttrs a = toElem name [embed . a . observe attributes] [children]
 
 -- | Process every attribute of an element one by one.
 
-processAttr :: (ArrowPlus (~>), ArrowList (~>)) => (Attribute ~> Attribute) -> Node ~> Node
-processAttr a = toElem tag [a . attributes] [children]
+processAttr :: (ArrowF [] (~>), ArrowPlus (~>)) => (Z Attribute ~> Z Attribute) -> Z Node ~> Z Node
+processAttr a = toElem name [a . attributes] [children]
 
 ----------------
 
-parseHtml :: ArrowList (~>) => ByteString ~> Node
-parseHtml = arrL (either (const []) X.docContent . X.parseHTML "")
+parseHtml :: ArrowF [] (~>) => ByteString ~> Z Node
+parseHtml = mkZ . embed . arr (either (const []) X.docContent . X.parseHTML "")
 
-parseXml :: ArrowList (~>) => ByteString ~> Node
-parseXml = arrL (either (const []) X.docContent . X.parseXML "")
+parseXml :: ArrowF [] (~>) => ByteString ~> Z Node
+parseXml = mkZ . embed . arr (either (const []) X.docContent . X.parseXML "")
 
