@@ -11,8 +11,8 @@
 module Text.XmlHtml.Arrow
 (
 
--- * Run an arrow.
-  run
+  Z (focus)
+, mkZ
 
 -- * Selection.
 
@@ -26,9 +26,11 @@ module Text.XmlHtml.Arrow
 -- * Going up and side-ways.
 
 , parent
+, ancestors
 , root
--- , lefts
--- , rights
+, lefts
+, rights
+, siblings
 
 -- * Filter based on type.
 
@@ -84,8 +86,8 @@ where
 import Control.Applicative
 import Control.Arrow
 import Control.Arrow.ArrowF
-import Control.Arrow.List
 import Control.Category
+import Data.Maybe
 import Data.ByteString (ByteString)
 import Data.Foldable hiding (elem)
 import Data.Text (Text)
@@ -99,25 +101,31 @@ type Attribute = (Text, Text)
 
 data Z a = Z
   { focus     :: a
-  , ancestors :: [Node]
---   , lefts     :: [Node]
---   , rights    :: [Node]
-  } deriving (Functor, Foldable, Traversable)
+  , _parent   :: Maybe (Z Node)
+  , _lefts    :: [a]
+  , _rights   :: [a]
+  } deriving (Show, Functor, Foldable, Traversable)
 
 mkZ :: Arrow (~>) => a ~> Z a
-mkZ = arr (\a -> Z a [])
-
-run :: ListArrow (Z a) (Z b) -> [a] -> [b]
-run a = map focus . runListArrow (a . mkZ . embed)
+mkZ = arr (\a -> Z a Nothing [] [])
 
 name :: (ArrowF f (~>), Alternative f) => Z Node ~> Z Text
 name = arr (fmap X.elementTag) . isElem
 
 children :: ArrowF [] (~>) => Z Node ~> Z Node
-children = embed . arr (\(Z x xs) -> let ys = x:xs in (\c -> Z c ys) <$> X.elementChildren x) . isElem
+children = embed . arr (down X.elementChildren) . isElem
+
+down :: (Node -> [a]) -> Z Node -> [Z a]
+down f z = groupSiblings z (f (focus z))
+
+groupSiblings :: Z Node -> [a] -> [Z a]
+groupSiblings z xs =
+      (\(c, before, after) -> Z c (Just z) before after)
+  <$> (\(x, i) -> (x, take i xs, drop (i + 1) xs))
+  <$> zip xs [0..]
 
 attributes :: ArrowF [] (~>) => Z Node ~> Z Attribute
-attributes = embed . arr (\(Z x xs) -> let ys = x:xs in flip Z ys <$> X.elementAttrs x) . isElem
+attributes = embed . arr (down X.elementAttrs) . isElem
 
 isElem, isText, isComment :: (ArrowF f (~>), Alternative f) => Z Node ~> Z Node
 isElem    = isA (\z -> case focus z of X.Element  {} -> True; _ -> False)
@@ -131,10 +139,10 @@ value :: Arrow (~>) => Z Attribute ~> Z Text
 value = arr (fmap snd)
 
 text :: ArrowF [] (~>) => Z Node ~> Z Text
-text = embed . arr (mapM (\c -> case c of X.TextNode t -> [t]; _ -> []))
+text = mkZ . embed . arr (\c -> case focus c of X.TextNode t -> [t]; _ -> [])
 
 elem :: ArrowF [] (~>) => (Text -> Bool) -> Z Node ~> Z Node
-elem f = embed . arr (mapM (\n -> case n of X.Element e _ _ | f e -> [n]; _ -> []))
+elem f = isA (\z -> case focus z of X.Element e _ _ | f e -> True; _ -> False)
 
 attr :: (ArrowF [] (~>), ArrowChoice (~>)) => (Text -> Bool) -> Z Node ~> Z Text
 attr f = (isA (f . focus) . key `guards` value) . attributes
@@ -148,17 +156,32 @@ hasAttr f = filterA (isA (f . focus) . key . attributes)
 ----------------
 
 parent :: ArrowF [] (~>) => Z a ~> Z Node
-parent = embed . arr (\z -> case ancestors z of x:xs -> [Z x xs]; _ -> [])
+parent = embed . arr (maybeToList . _parent)
 
-root :: ArrowF [] (~>) => Z a ~> Z Node
-root = mkZ . embed . arr (take 1 . reverse . ancestors)
+ancestors :: (ArrowF [] (~>), ArrowPlus (~>)) => Z Node ~> Z Node
+ancestors = (id <+> ancestors) . parent
+
+root :: Arrow (~>) => Z Node ~> Z Node
+root = arr up where up p = maybe p up (_parent p)
+
+lefts :: ArrowF [] (~>) => Z Node ~> Z Node
+lefts = embed . arr (\x -> take (length (_lefts x)) (grouped x))
+
+rights :: ArrowF [] (~>) => Z Node ~> Z Node
+rights = embed . arr (\x -> drop (length (_lefts x) + 1) (grouped x))
+
+siblings :: (ArrowF [] (~>), ArrowPlus (~>)) => Z Node ~> Z Node
+siblings = lefts <+> rights
+
+grouped :: Z Node -> [Z Node]
+grouped z = groupSiblings z (_lefts z ++ focus z : _rights z)
 
 ----------------
 
 deep :: (ArrowF [] (~>), ArrowPlus (~>)) => (Z Node ~> a) -> Z Node ~> a
 deep e = e <+> deep e . children
 
-deepWhen :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => (Z Node ~> c) -> Z Node ~> a -> Z Node ~> a
+deepWhen :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => (Z Node ~> c) -> (Z Node ~> a) -> Z Node ~> a
 deepWhen g e = e <+> g `guards` deepWhen g e . children
 
 deepText :: (ArrowF [] (~>), ArrowPlus (~>)) => Z Node ~> Z Text
