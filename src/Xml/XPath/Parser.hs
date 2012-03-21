@@ -17,20 +17,23 @@ xpath :: Parser XPath
 xpath = XPath <$> expr <* endOfInput
 
 locationPath :: Parser LocationPath
-locationPath = Absolute <$> absoluteLocationPath
-           <|> Relative <$> relativeLocationPath
+locationPath
+   =  Absolute <$> absoluteLocationPath
+  <|> Relative <$> relativeLocationPath
 
 relativeLocationPath :: Parser [Step]
-relativeLocationPath = (++)
-                   <$> (step `sepBy1` token "/")
-                   <*> option [] abbreviatedRelativeLocationPath
+relativeLocationPath
+   =  (++)
+  <$> (step `sepBy1` token "/")
+  <*> option [] abbreviatedRelativeLocationPath
 
 abbreviatedRelativeLocationPath :: Parser [Step]
 abbreviatedRelativeLocationPath = (descendantOrSelf :) <$> (token "//" *> (pure <$> step))
 
 absoluteLocationPath :: Parser [Step]
-absoluteLocationPath = abbreviatedAbsoluteLocationPath
-                   <|> token "/" *> option [] relativeLocationPath
+absoluteLocationPath
+   =  abbreviatedAbsoluteLocationPath
+  <|> token "/" *> option [] relativeLocationPath
 
 abbreviatedAbsoluteLocationPath :: Parser [Step]
 abbreviatedAbsoluteLocationPath = (descendantOrSelf :) <$> (token "//" *> relativeLocationPath)
@@ -40,8 +43,9 @@ step = Step <$> axisSpecifier <*> nodeTest <*> many predicate
    <|> abbreviatedStep
 
 abbreviatedStep :: Parser Step
-abbreviatedStep = parent <$ token ".."
-              <|> self   <$ token "."
+abbreviatedStep
+   =  parent <$ token ".."
+  <|> self   <$ token "."
 
 descendantOrSelf :: Step
 descendantOrSelf = Step (NamedAxis DescendantOrSelf) (NodeType Node) []
@@ -76,30 +80,35 @@ abbreviatedAxisSpecifier :: Parser AxisSpecifier
 abbreviatedAxisSpecifier = option NodeAxis (AttrAxis <$ token "@")
 
 nodeTest :: Parser NodeTest
-nodeTest = NodeType <$> nodeType
-       <|> PiTest   <$> processingInstruction
-       <|> NameTest <$> nameTest
+nodeTest
+   =  NodeType <$> nodeType
+  <|> PiTest   <$> processingInstruction
+  <|> NameTest <$> nameTest
 
 nameTest :: Parser NameTest
-nameTest = Star   <$  token "*"
-       <|> NsStar <$> free unqualified <* token ":*"
-       <|> QName  <$> free qualified
+nameTest
+   =  Star   <$  token "*"
+  <|> NsStar <$> free unqualified <* token ":*"
+  <|> QName  <$> free qualified
 
 nodeType :: Parser NodeType
-nodeType = p Comment               "comment"
-       <|> p Text                  "text"
-       <|> p ProcessingInstruction "processing-instruction"
-       <|> p Node                  "node"
+nodeType
+   =  p Comment               "comment"
+  <|> p Text                  "text"
+  <|> p ProcessingInstruction "processing-instruction"
+  <|> p Node                  "node"
   where p f t = f <$ token t <* token "(" <* token ")"
 
 processingInstruction :: Parser Text
-processingInstruction = PiTest
-                    <$> token "processing-instruction"
-                    <*  token "(" *> literal <* token ")"
+processingInstruction
+   =  PiTest
+  <$> token "processing-instruction"
+  <*  token "(" *> literal <* token ")"
 
 literal :: Parser Text
-literal = free (char '"'  *> takeTill (=='"' ) <* char '"')
-      <|> free (char '\'' *> takeTill (=='\'') <* char '\'')
+literal
+   =  free (char '"'  *> takeTill (=='"' ) <* char '"')
+  <|> free (char '\'' *> takeTill (=='\'') <* char '\'')
 
 predicate :: Parser Expr
 predicate = token "[" *> expr <* token "]"
@@ -108,20 +117,22 @@ expr :: Parser Expr
 expr = buildExpressionParser table primaryExpr
 
 primaryExpr :: Parser Expr
-primaryExpr = token "(" *> expr <* token ")"
-          <|> Literal  <$> literal
-          <|> Number   <$> free number
-          <|> Variable <$> variableReference
-          <|> functionCall
-          <|> Path     <$> locationPath
+primaryExpr
+   =  token "(" *> expr <* token ")"
+  <|> Literal  <$> literal
+  <|> Number   <$> free number
+  <|> Variable <$> variableReference
+  <|> functionCall
+  <|> Path     <$> locationPath
 
 variableReference :: Parser Text
 variableReference = free (char '$' *> qualified)
 
 functionCall :: Parser Expr
-functionCall = FunctionCall
-           <$> functionName
-           <*> (token "(" *> (expr `sepBy` token ",") <* token ")")
+functionCall
+   =  FunctionCall
+  <$> functionName
+  <*> (token "(" *> (expr `sepBy` token ",") <* token ")")
 
 functionName :: Parser Text
 functionName = join (valid <$> free qualified)
@@ -150,14 +161,16 @@ table =
   ]
 
 unqualified :: Parser Text
-unqualified = T.cons
-          <$> satisfy (\d -> isAlpha d || d == '_')
-          <*> takeWhile (\d -> d == '-' || isAlpha d || isDigit d)
+unqualified
+   =  T.cons
+  <$> satisfy (\d -> isAlpha d || d == '_')
+  <*> takeWhile (\d -> d == '-' || isAlpha d || isDigit d)
 
 qualified :: Parser Text
-qualified = T.append
-        <$> unqualified
-        <*> (T.cons <$> char ':' <*> unqualified <|> pure "")
+qualified
+   =  T.append
+  <$> unqualified
+  <*> (T.cons <$> char ':' <*> unqualified <|> pure "")
 
 free :: Parser a -> Parser a
 free = (<* many space)
