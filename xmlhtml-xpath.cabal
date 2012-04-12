@@ -1,7 +1,7 @@
 Name:             xmlhtml-xpath
 Version:          0.0.1
-Description:      XPath for xmlhtml.
-Synopsis:         XPath for xmlhtml.
+Description:      XPath support for xmlhtml.
+Synopsis:         XPath support for xmlhtml.
 Category:         Data, Xml
 License:          BSD3
 License-file:     LICENSE
@@ -15,12 +15,17 @@ Library
   HS-Source-Dirs:   src
 
   Build-Depends:
-      base       == 4.*
-    , arrow-list >= 0.1 && < 0.6
-    , bytestring == 0.9.*
-    , containers >= 0.3 && < 0.5
-    , text       == 0.11.*
-    , xmlhtml    == 0.1.*
+      base            == 4.*
+    , arrow-list      >= 0.6 && < 0.7
+    , attoparsec      == 0.10.*
+    , bytestring      == 0.9.*
+    , attoparsec-expr == 0.1
+    , containers      >= 0.3 && < 0.5
+    , text            == 0.11.*
+    , xmlhtml         == 0.1.*
 
   Exposed-modules:  Text.XmlHtml.Arrow
+                    Xml.XPath.Evaluator
+                    Xml.XPath.Parser
+                    Xml.XPath.Types
 
