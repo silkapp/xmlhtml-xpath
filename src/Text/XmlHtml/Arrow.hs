@@ -79,7 +79,7 @@ module Text.XmlHtml.Arrow
 , parseXml
 
 -- * Convenient type for attributes.
-, Attribute
+, Attr
 )
 where
 
@@ -97,7 +97,7 @@ import Text.XmlHtml (Node)
 
 import qualified Text.XmlHtml as X
 
-type Attribute = (Text, Text)
+type Attr = (Text, Text)
 
 data Z a = Z
   { focus     :: a
@@ -124,7 +124,7 @@ groupSiblings z xs =
   <$> (\(x, i) -> (x, take i xs, drop (i + 1) xs))
   <$> zip xs [0..]
 
-attributes :: ArrowF [] (~>) => Z Node ~> Z Attribute
+attributes :: ArrowF [] (~>) => Z Node ~> Z Attr
 attributes = embed . arr (down X.elementAttrs) . isElem
 
 isElem, isText, isComment :: (ArrowF f (~>), Alternative f) => Z Node ~> Z Node
@@ -132,10 +132,10 @@ isElem    = isA (\z -> case focus z of X.Element  {} -> True; _ -> False)
 isText    = isA (\z -> case focus z of X.TextNode {} -> True; _ -> False)
 isComment = isA (\z -> case focus z of X.Comment  {} -> True; _ -> False)
 
-key :: Arrow (~>) => Z Attribute ~> Z Text
+key :: Arrow (~>) => Z Attr ~> Z Text
 key = arr (fmap fst)
 
-value :: Arrow (~>) => Z Attribute ~> Z Text
+value :: Arrow (~>) => Z Attr ~> Z Text
 value = arr (fmap snd)
 
 text :: ArrowF [] (~>) => Z Node ~> Z Text
@@ -191,14 +191,14 @@ deepText = deep text
 
 -- TODO: how to dertermine the zipper evironment for the newly created?
 
-toElem :: (ArrowF [] (~>), ArrowPlus (~>)) => (a ~> Z Text) -> [a ~> Z Attribute] -> [a ~> Z Node] -> a ~> Z Node
+toElem :: (ArrowF [] (~>), ArrowPlus (~>)) => (a ~> Z Text) -> [a ~> Z Attr] -> [a ~> Z Node] -> a ~> Z Node
 toElem q as cs = proc i ->
   do n <- arr focus . q -< i
      a <- observe (arr focus . concatA as) -< i
      c <- observe (arr focus . concatA cs) -< i
      mkZ -< X.Element n a c
 
-toAttr :: Arrow (~>) => (a ~> Z Text) -> (a ~> Z Text) -> a ~> Z Attribute
+toAttr :: Arrow (~>) => (a ~> Z Text) -> (a ~> Z Text) -> a ~> Z Attr
 toAttr q s = proc i ->
   do n <- arr focus . q -< i
      v <- arr focus . s -< i
@@ -209,13 +209,13 @@ toText = arr (fmap X.TextNode)
 
 ----------------
 
-mkElem :: (ArrowF [] (~>), ArrowPlus (~>)) => Text -> [a ~> Z Attribute] -> [a ~> Z Node] -> a ~> Z Node
+mkElem :: (ArrowF [] (~>), ArrowPlus (~>)) => Text -> [a ~> Z Attr] -> [a ~> Z Node] -> a ~> Z Node
 mkElem q = toElem (mkZ . const q)
 
-mkAttr :: Arrow (~>) => Text -> Z Text ~> Z Attribute
+mkAttr :: Arrow (~>) => Text -> Z Text ~> Z Attr
 mkAttr k = toAttr (mkZ . const k) id
 
-mkAttrValue :: Arrow (~>) => Text -> Text -> a ~> Z Attribute
+mkAttrValue :: Arrow (~>) => Text -> Text -> a ~> Z Attr
 mkAttrValue k v = mkAttr k . mkZ . const v
 
 mkText :: Arrow (~>) => Text -> a ~> Z Node
@@ -247,12 +247,12 @@ processText a = toText . a . text
 
 -- | Process the list of attributes of an element.
 
-processAttrs :: (ArrowF [] (~>), ArrowPlus (~>)) => ([Z Attribute] ~> [Z Attribute]) -> Z Node ~> Z Node
+processAttrs :: (ArrowF [] (~>), ArrowPlus (~>)) => ([Z Attr] ~> [Z Attr]) -> Z Node ~> Z Node
 processAttrs a = toElem name [embed . a . observe attributes] [children]
 
--- | Process every attribute of an element one by one.
+-- | Process every Attr of an element one by one.
 
-processAttr :: (ArrowF [] (~>), ArrowPlus (~>)) => (Z Attribute ~> Z Attribute) -> Z Node ~> Z Node
+processAttr :: (ArrowF [] (~>), ArrowPlus (~>)) => (Z Attr ~> Z Attr) -> Z Node ~> Z Node
 processAttr a = toElem name [a . attributes] [children]
 
 ----------------
