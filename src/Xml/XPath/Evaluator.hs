@@ -43,14 +43,14 @@ numberV = embed . arr (\n -> case n of NumValue m -> [m]; _ -> [])
 
 -------------------------------------------------------------------------------
 
-evaluate :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Text -> Z Node ~> Value
+evaluate :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Text -> Value ~> Value
 evaluate path =
   case parser path of
     Left  e -> error (show e)
-    Right r -> locationPath r
+    Right e -> expression e
 
-parser :: Text -> Either String LocationPath
-parser = parseOnly Parser.locationPath
+parser :: Text -> Either String Expr
+parser = parseOnly Parser.expr
 
 -------------------------------------------------------------------------------
 

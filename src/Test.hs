@@ -11,6 +11,7 @@ import Prelude hiding ((.), id, elem)
 import qualified Data.ByteString as B
 
 import Text.XmlHtml.Arrow
+import Xml.XPath
 import Xml.XPath.Parser
 import Xml.XPath.Evaluator
 
@@ -22,10 +23,9 @@ main =
 
      case parseHTML "data/test.html" file of
        Left err  -> error err
-       Right doc -> mapM_ print (runListArrow (arrow . mkZ . embed) (docContent doc))
+       Right doc -> mapM_ print (run thePath (Element "" [] (docContent doc)))
 
-  where arrow = unZ . nodeV . evaluate thePath
-        thePath = "//li[3]"
+  where thePath = "//li[2]"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
 
