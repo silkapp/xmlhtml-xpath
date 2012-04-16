@@ -16,16 +16,16 @@ import Xml.XPath.Evaluator
 
 main :: IO ()
 main =
-  do file <- B.readFile "../data/test.html"
+  do file <- B.readFile "data/test.html"
 
      print (parser thePath)
 
-     case parseHTML "../data/test.html" file of
+     case parseHTML "data/test.html" file of
        Left err  -> error err
        Right doc -> mapM_ print (runListArrow (arrow . mkZ . embed) (docContent doc))
 
   where arrow = unZ . nodeV . evaluate thePath
-        thePath = "//li[a = 'the Anchor' and a[@data-uri='nope-2']]//b"
+        thePath = "//li[position()=3]"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
 
