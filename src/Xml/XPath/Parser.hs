@@ -77,7 +77,7 @@ axisName = p Ancestor         "ancestor"
   where p f t = f <$ (token t <* token "::")
 
 abbreviatedAxisSpecifier :: Parser AxisSpecifier
-abbreviatedAxisSpecifier = option NodeAxis (AttrAxis <$ token "@")
+abbreviatedAxisSpecifier = option (NamedAxis Child) (AttrAxis <$ token "@")
 
 nodeTest :: Parser NodeTest
 nodeTest
