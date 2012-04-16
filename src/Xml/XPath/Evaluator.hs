@@ -107,13 +107,18 @@ axisName PrecedingSibling = arr NodeValue . lefts
 axisName Self             = arr NodeValue . id
 
 expression :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => Expr -> Value ~> Value
-expression (Is  a b               ) = arr fst . isA (uncurry eqValue) . (expression a &&& expression b)
-expression (Or  a b               ) = expression a <+> expression b
-expression (And a b               ) = arr fst . (expression a &&& expression b)
-expression (Path    p             ) = locationPath p . nodeV
-expression (Literal t             ) = arr TextValue . const t
-expression (FunctionCall name args) = functionCall name args
-expression (Number n              ) = const (NumValue n)
+expression expr =
+  case expr of
+    Number n -> go (Is (FunctionCall "position" []) expr)
+    _        -> go expr
+  where
+    go (Is  a b               ) = arr fst . isA (uncurry eqValue) . (go a &&& go b)
+    go (Or  a b               ) = go a <+> go b
+    go (And a b               ) = arr fst . (go a &&& go b)
+    go (Path    p             ) = locationPath p . nodeV
+    go (Literal t             ) = arr TextValue . const t
+    go (FunctionCall name args) = functionCall name args
+    go (Number n              ) = const (NumValue n)
 
 functionCall :: ArrowF [] (~>) => Text -> [Expr] -> Value ~> Value
 functionCall "position" _ = arr (NumValue . fromIntegral . (+1)) . position . nodeV

@@ -25,7 +25,7 @@ main =
        Right doc -> mapM_ print (runListArrow (arrow . mkZ . embed) (docContent doc))
 
   where arrow = unZ . nodeV . evaluate thePath
-        thePath = "//li[position()=3]"
+        thePath = "//li[3]"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
 
