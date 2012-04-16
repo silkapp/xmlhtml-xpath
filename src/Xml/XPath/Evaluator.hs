@@ -2,6 +2,7 @@
     TypeOperators
   , FlexibleContexts
   , FlexibleInstances
+  , OverloadedStrings
   #-}
 module Xml.XPath.Evaluator where
 
@@ -24,7 +25,8 @@ import qualified Xml.XPath.Parser as Parser
 data Value
   = NodeValue (Z Node)
   | AttrValue (Z Attr)
-  | TextValue (Z Text)
+  | TextValue Text
+  | NumValue  Number
   deriving Show
 
 nodeV :: ArrowF [] (~>) => Value ~> Z Node
@@ -33,8 +35,12 @@ nodeV = embed . arr (\n -> case n of NodeValue z -> [z]; _ -> [])
 attrV :: ArrowF [] (~>) => Value ~> Z Attr
 attrV = embed . arr (\n -> case n of AttrValue z -> [z]; _ -> [])
 
-textV :: ArrowF [] (~>) => Value ~> Z Text
-textV = embed . arr (\n -> case n of TextValue z -> [z]; _ -> [])
+textV :: ArrowF [] (~>) => Value ~> Text
+textV = embed . arr (\n -> case n of TextValue n -> [n]; _ -> [])
+
+numberV :: ArrowF [] (~>) => Value ~> Number
+numberV = embed . arr (\n -> case n of NumValue n -> [n]; _ -> [])
+
 
 -------------------------------------------------------------------------------
 
@@ -101,17 +107,25 @@ axisName PrecedingSibling = arr NodeValue . lefts
 axisName Self             = arr NodeValue . id
 
 expression :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => Expr -> Value ~> Value
-expression (Is  a b )  = arr fst . isA (uncurry eqValue) . (expression a &&& expression b)
-expression (Or  a b )  = expression a <+> expression b
-expression (And a b )  = arr fst . (expression a &&& expression b)
-expression (Path    p) = locationPath p . nodeV
-expression (Literal t) = arr TextValue . mkZ . const t
+expression (Is  a b               ) = arr fst . isA (uncurry eqValue) . (expression a &&& expression b)
+expression (Or  a b               ) = expression a <+> expression b
+expression (And a b               ) = arr fst . (expression a &&& expression b)
+expression (Path    p             ) = locationPath p . nodeV
+expression (Literal t             ) = arr TextValue . const t
+expression (FunctionCall name args) = functionCall name args
+expression (Number n              ) = const (NumValue n)
+
+functionCall :: ArrowF [] (~>) => Text -> [Expr] -> Value ~> Value
+functionCall "position" _ = arr (NumValue . fromIntegral . (+1)) . position . nodeV
+functionCall name       _ = error $ "functionCall for " ++ T.unpack name ++ " not implemented."
 
 eqValue :: Value -> Value -> Bool
-eqValue = (==) `on` stringValue
+eqValue (NumValue n) (NumValue m) = n == m
+eqValue a            b            = stringValue a == stringValue b
 
 stringValue :: Value -> Text
 stringValue (NodeValue a) = nodeText (focus a)
-stringValue (TextValue a) = focus a
+stringValue (TextValue a) = a
 stringValue (AttrValue a) = snd (focus a)
+stringValue (NumValue  a) = T.pack (show a)
 
