@@ -10,7 +10,6 @@ import Control.Category
 import Control.Arrow
 import Control.Arrow.ArrowF
 import Data.Attoparsec.Text
-import Data.Function (on)
 import Data.Text (Text)
 import Text.XmlHtml (Node)
 import Prelude hiding ((.), id, elem, const)
@@ -36,10 +35,10 @@ attrV :: ArrowF [] (~>) => Value ~> Z Attr
 attrV = embed . arr (\n -> case n of AttrValue z -> [z]; _ -> [])
 
 textV :: ArrowF [] (~>) => Value ~> Text
-textV = embed . arr (\n -> case n of TextValue n -> [n]; _ -> [])
+textV = embed . arr (\n -> case n of TextValue t -> [t]; _ -> [])
 
 numberV :: ArrowF [] (~>) => Value ~> Number
-numberV = embed . arr (\n -> case n of NumValue n -> [n]; _ -> [])
+numberV = embed . arr (\n -> case n of NumValue m -> [m]; _ -> [])
 
 
 -------------------------------------------------------------------------------
@@ -74,6 +73,7 @@ nodeTest :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => NodeTest -> Va
 nodeTest (NameTest t) = filterA (nameTest t . name . nodeV)
                     <+> filterA (nameTest t . key  . attrV)
 nodeTest (NodeType t) = filterA (nodeType t .        nodeV)
+nodeTest (PiTest   _) = none
 
 nameTest :: ArrowF [] (~>) => NameTest -> Z Text ~> Z Text
 nameTest Star        = id
@@ -109,20 +109,20 @@ axisName Self             = arr NodeValue . id
 expression :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => Expr -> Value ~> Value
 expression expr =
   case expr of
-    Number n -> go (Is (FunctionCall "position" []) expr)
+    Number _ -> go (Is (FunctionCall "position" []) expr)
     _        -> go expr
   where
-    go (Is  a b               ) = arr fst . isA (uncurry eqValue) . (go a &&& go b)
-    go (Or  a b               ) = go a <+> go b
-    go (And a b               ) = arr fst . (go a &&& go b)
-    go (Path    p             ) = locationPath p . nodeV
-    go (Literal t             ) = arr TextValue . const t
-    go (FunctionCall name args) = functionCall name args
-    go (Number n              ) = const (NumValue n)
+    go (Is  a b             ) = arr fst . isA (uncurry eqValue) . (go a &&& go b)
+    go (Or  a b             ) = go a <+> go b
+    go (And a b             ) = arr fst . (go a &&& go b)
+    go (Path    p           ) = locationPath p . nodeV
+    go (Literal t           ) = arr TextValue . const t
+    go (FunctionCall nm args) = functionCall nm args
+    go (Number n            ) = const (NumValue n)
 
 functionCall :: ArrowF [] (~>) => Text -> [Expr] -> Value ~> Value
 functionCall "position" _ = arr (NumValue . fromIntegral . (+1)) . position . nodeV
-functionCall name       _ = error $ "functionCall for " ++ T.unpack name ++ " not implemented."
+functionCall nm         _ = error $ "functionCall for " ++ T.unpack nm ++ " not implemented."
 
 eqValue :: Value -> Value -> Bool
 eqValue (NumValue n) (NumValue m) = n == m
