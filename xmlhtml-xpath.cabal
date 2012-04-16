@@ -25,6 +25,7 @@ Library
     , xmlhtml         == 0.1.*
 
   Exposed-modules:  Text.XmlHtml.Arrow
+                    Xml.XPath
                     Xml.XPath.Evaluator
                     Xml.XPath.Parser
                     Xml.XPath.Types
