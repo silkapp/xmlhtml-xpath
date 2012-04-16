@@ -13,6 +13,7 @@ module Text.XmlHtml.Arrow
 
   Z (focus)
 , mkZ
+, unZ
 
 -- * Selection.
 
@@ -104,10 +105,16 @@ data Z a = Z
   , _parent   :: Maybe (Z Node)
   , _lefts    :: [a]
   , _rights   :: [a]
-  } deriving (Show, Functor, Foldable, Traversable)
+  } deriving (Functor, Foldable, Traversable)
+
+instance Show a => Show (Z a) where
+  show (Z f _ _ _) = "(Z) " ++ show f
 
 mkZ :: Arrow (~>) => a ~> Z a
 mkZ = arr (\a -> Z a Nothing [] [])
+
+unZ :: Arrow (~>) => Z a ~> a
+unZ = arr focus
 
 name :: (ArrowF f (~>), Alternative f) => Z Node ~> Z Text
 name = arr (fmap X.elementTag) . isElem
