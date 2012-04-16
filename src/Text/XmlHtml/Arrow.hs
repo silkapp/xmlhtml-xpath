@@ -32,6 +32,7 @@ module Text.XmlHtml.Arrow
 , lefts
 , rights
 , siblings
+, position
 
 -- * Filter based on type.
 
@@ -94,7 +95,7 @@ import Data.Foldable hiding (elem)
 import Data.Text (Text)
 import Data.Traversable
 import Prelude hiding (elem, const, (.), id, mapM)
-import Text.XmlHtml (Node)
+import Text.XmlHtml (Node, isElement)
 
 import qualified Text.XmlHtml as X
 
@@ -179,6 +180,9 @@ rights = embed . arr (\x -> drop (length (_lefts x) + 1) (grouped x))
 
 siblings :: (ArrowF [] (~>), ArrowPlus (~>)) => Z Node ~> Z Node
 siblings = lefts <+> rights
+
+position :: Arrow (~>) => Z Node ~> Int
+position = arr (length . filter isElement . _lefts)
 
 grouped :: Z Node -> [Z Node]
 grouped z = groupSiblings z (_lefts z ++ focus z : _rights z)
