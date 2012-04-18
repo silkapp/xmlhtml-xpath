@@ -126,13 +126,13 @@ axisName Attribute        = arr AttrValue . attributes
 axisName Child            = arr NodeValue . children
 axisName Descendant       = arr NodeValue . deep id . children
 axisName DescendantOrSelf = arr NodeValue . deep id
--- axisName Following        = arr NodeValue
 axisName FollowingSibling = arr NodeValue . rights
--- axisName Namespace        = none
 axisName Parent           = arr NodeValue . parent
--- axisName Preceding        = arr NodeValue
 axisName PrecedingSibling = arr NodeValue . lefts
 axisName Self             = arr NodeValue . id
+-- axisName Preceding        = arr NodeValue
+-- axisName Following        = arr NodeValue
+-- axisName Namespace        = none
 
 expression :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Expr -> Result ~> Result
 expression expr = reindex (go expr)
