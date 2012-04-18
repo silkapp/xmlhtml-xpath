@@ -17,9 +17,9 @@ import Prelude hiding ((.), id, elem, const)
 import Text.XmlHtml (nodeText)
 import Text.XmlHtml.Arrow
 import Xml.XPath.Types
+import Xml.XPath.Parser (parser)
 
-import qualified Data.Text        as T
-import qualified Xml.XPath.Parser as Parser
+import qualified Data.Text as T
 
 {-
 todo:
@@ -74,13 +74,8 @@ reindex ar = embed . arr (\xs -> zip [1..] xs) . observe ar
 evaluate :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Text -> Value ~> Value
 evaluate path =
   case parser path of
-    Left  e -> error (show e)
-    Right e -> expression e
-
-parser :: Text -> Either String Expr
-parser = parseOnly Parser.expr
-
--------------------------------------------------------------------------------
+    Left  e         -> error (show e)
+    Right (XPath e) -> arr snd . expression e . (const 1 &&& id)
 
 locationPath :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => LocationPath -> Z Node ~> Value
 locationPath path =
