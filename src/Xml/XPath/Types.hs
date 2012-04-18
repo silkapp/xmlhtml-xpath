@@ -73,8 +73,9 @@ data Expr
   | Unary        Expr
   | Union        Expr Expr
   | Path         LocationPath
-  | Children     Expr Expr
-  | DeepChildren Expr Expr
+  | Children     Expr [Step]
+  | DeepChildren Expr [Step]
+  | Filter       Expr Expr
   | Variable     Text
   | Literal      Text
   | Number       Number
