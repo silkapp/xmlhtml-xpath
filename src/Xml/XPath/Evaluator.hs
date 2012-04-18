@@ -28,6 +28,24 @@ data Value
   | NumValue  Number
   deriving Show
 
+instance Eq Value where
+  NumValue n == NumValue m = n == m
+  a          ==  b         = stringValue a == stringValue b
+
+instance Ord Value where
+  compare (NumValue n) (NumValue m) = compare n m
+  compare a            b            = compare (stringValue a) (stringValue b)
+
+instance Num Value where
+  NumValue a + NumValue b = NumValue (a + b)
+  NumValue a * NumValue b = NumValue (a * b)
+  abs (NumValue a) = NumValue (abs a)
+  signum (NumValue a) = NumValue (signum a)
+  fromInteger = NumValue . fromInteger
+
+instance Fractional Value where
+  fromRational = NumValue . fromRational
+
 nodeV :: ArrowF [] (~>) => Value ~> Z Node
 nodeV = embed . arr (\n -> case n of NodeValue z -> [z]; _ -> [])
 
