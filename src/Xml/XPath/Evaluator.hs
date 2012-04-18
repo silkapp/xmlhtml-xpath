@@ -138,6 +138,15 @@ expression :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Expr -> Resu
 expression expr = reindex (go expr)
   where go :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Expr -> Result ~> Value
         go ( Is           a b  ) = arr fst . isA (uncurry (==)) . (go a &&& go b)
+        go ( IsNot        a b  ) = arr fst . isA (uncurry (/=)) . (go a &&& go b)
+        go ( Lt           a b  ) = arr fst . isA (uncurry (< )) . (go a &&& go b)
+        go ( Gt           a b  ) = arr fst . isA (uncurry (> )) . (go a &&& go b)
+        go ( Lte          a b  ) = arr fst . isA (uncurry (<=)) . (go a &&& go b)
+        go ( Gte          a b  ) = arr fst . isA (uncurry (>=)) . (go a &&& go b)
+        go ( Add          a b  ) = arr (uncurry (+)) . (go a &&& go b)
+        go ( Sub          a b  ) = arr (uncurry (-)) . (go a &&& go b)
+        go ( Mul          a b  ) = arr (uncurry (*)) . (go a &&& go b)
+        go ( Div          a b  ) = arr (uncurry (/)) . (go a &&& go b)
         go ( Or           a b  ) = go a <+> go b
         go ( And          a b  ) = arr fst . (go a &&& go b)
         go ( Literal      t    ) = arr TextValue . const t
