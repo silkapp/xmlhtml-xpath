@@ -52,6 +52,8 @@ instance Num Value where
 instance Fractional Value where
   fromRational = NumValue . fromRational
 
+type Result = (Integer, Value)
+
 nodeV :: ArrowF [] (~>) => Value ~> Z Node
 nodeV = embed . arr (\n -> case n of NodeValue z -> [z]; _ -> [])
 
@@ -61,9 +63,11 @@ attrV = embed . arr (\n -> case n of AttrValue z -> [z]; _ -> [])
 textV :: ArrowF [] (~>) => Value ~> Text
 textV = embed . arr (\n -> case n of TextValue t -> [t]; _ -> [])
 
-numberV :: ArrowF [] (~>) => Value ~> Number
-numberV = embed . arr (\n -> case n of NumValue m -> [m]; _ -> [])
+numV :: ArrowF [] (~>) => Value ~> Number
+numV = embed . arr (\n -> case n of NumValue m -> [m]; _ -> [])
 
+reindex :: ArrowF [] (~>) => (a ~> Value) -> a ~> Result
+reindex ar = embed . arr (\xs -> zip [1..] xs) . observe ar
 
 -------------------------------------------------------------------------------
 
@@ -81,17 +85,17 @@ parser = parseOnly Parser.expr
 locationPath :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => LocationPath -> Z Node ~> Value
 locationPath path =
   case path of
-    Relative xs -> go xs
-    Absolute xs -> go xs . root
-  where go []     = arr NodeValue
-        go [x]    = step x
-        go (x:xs) = go xs . nodeV . step x
+    Relative xs -> steps xs
+    Absolute xs -> steps xs . root
 
-step :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Step -> Z Node ~> Value
-step (Step axis test exprs)
-  = foldr (\e b -> filterA (expression e) . b) id exprs
-  . filterA (nodeTest test)
-  . axisSpecifier axis
+steps :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => [Step] -> Z Node ~> Value
+steps xs = foldr (\s b -> step s (nodeV . b)) (arr NodeValue) (reverse xs)
+
+step :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Step -> (Z Node ~> Z Node) -> Z Node ~> Value
+step (Step axis test exprs) prev
+  = foldr (\e b -> arr snd . filterA (expression e) . reindex b)
+    (filterA (nodeTest test) . axisSpecifier axis . prev)
+    (reverse exprs)
 
 nodeTest :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => NodeTest -> Value ~> Value
 nodeTest (NameTest t) = filterA (nameTest t . name . nodeV)
@@ -130,27 +134,21 @@ axisName Parent           = arr NodeValue . parent
 axisName PrecedingSibling = arr NodeValue . lefts
 axisName Self             = arr NodeValue . id
 
-expression :: (ArrowF [] (~>), ArrowPlus (~>), ArrowChoice (~>)) => Expr -> Value ~> Value
-expression expr =
-  case expr of
-    Number _ -> go (Is (FunctionCall "position" []) expr)
-    _        -> go expr
-  where
-    go (Is  a b             ) = arr fst . isA (uncurry eqValue) . (go a &&& go b)
-    go (Or  a b             ) = go a <+> go b
-    go (And a b             ) = arr fst . (go a &&& go b)
-    go (Path    p           ) = locationPath p . nodeV
-    go (Literal t           ) = arr TextValue . const t
-    go (FunctionCall nm args) = functionCall nm args
-    go (Number n            ) = const (NumValue n)
+expression :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Expr -> Result ~> Result
+expression expr = reindex (go expr)
+  where go :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Expr -> Result ~> Value
+        go ( Is           a b  ) = arr fst . isA (uncurry (==)) . (go a &&& go b)
+        go ( Or           a b  ) = go a <+> go b
+        go ( And          a b  ) = arr fst . (go a &&& go b)
+        go ( Literal      t    ) = arr TextValue . const t
+        go ( Path         p    ) = locationPath p . nodeV . arr snd
+        go ( Filter       e p  ) = arr snd . filterA (go p) . expression e
+        go ( FunctionCall n as ) = fun n as
+        go ( Number       n    ) = const (NumValue n)
 
-functionCall :: ArrowF [] (~>) => Text -> [Expr] -> Value ~> Value
-functionCall "position" _ = arr (NumValue . fromIntegral . (+1)) . position . nodeV
-functionCall nm         _ = error $ "functionCall for " ++ T.unpack nm ++ " not implemented."
-
-eqValue :: Value -> Value -> Bool
-eqValue (NumValue n) (NumValue m) = n == m
-eqValue a            b            = stringValue a == stringValue b
+        fun :: ArrowF [] (~>) => Text -> [Expr] -> (Integer, Value) ~> Value
+        fun "position" _ = arr (NumValue . fromIntegral . fst)
+        fun nm         _ = error $ "function " ++ T.unpack nm ++ " not implemented."
 
 stringValue :: Value -> Text
 stringValue (NodeValue a) = nodeText (focus a)
