@@ -21,6 +21,12 @@ import Xml.XPath.Types
 import qualified Data.Text        as T
 import qualified Xml.XPath.Parser as Parser
 
+{-
+todo:
+  - What about Ord and Num instances for non-numeric values?
+  - What about parent selectors et al?
+-}
+
 data Value
   = NodeValue (Z Node)
   | AttrValue (Z Attr)
