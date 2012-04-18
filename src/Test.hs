@@ -1,19 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test where
 
-import Control.Category
-import Control.Arrow
-import Control.Arrow.List
-import Control.Arrow.ArrowF
 import Text.XmlHtml
 import Prelude hiding ((.), id, elem)
 
 import qualified Data.ByteString as B
 
-import Text.XmlHtml.Arrow
 import Xml.XPath
-import Xml.XPath.Parser
-import Xml.XPath.Evaluator
 
 main :: IO ()
 main =
@@ -25,7 +18,7 @@ main =
        Left err  -> error err
        Right doc -> mapM_ print (run thePath (Element "" [] (docContent doc)))
 
-  where thePath = "//li[2]"
+  where thePath = "html/body//a[position() > 3 and position() <= 5]"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
 
