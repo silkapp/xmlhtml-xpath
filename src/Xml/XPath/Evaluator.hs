@@ -9,7 +9,7 @@ module Xml.XPath.Evaluator where
 import Control.Category
 import Control.Arrow
 import Control.Arrow.ArrowF
-import Data.Attoparsec.Text
+import Data.Attoparsec.Text (Number)
 import Data.Text (Text)
 import Text.XmlHtml (Node)
 import Prelude hiding ((.), id, elem, const)
