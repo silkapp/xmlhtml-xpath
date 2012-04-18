@@ -13,6 +13,9 @@ import qualified Data.Text as T
 
 import Xml.XPath.Types
 
+parser :: Text -> Either String XPath
+parser = parseOnly xpath
+
 xpath :: Parser XPath
 xpath = XPath <$> expr <* endOfInput
 
