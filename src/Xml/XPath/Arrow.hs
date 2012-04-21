@@ -15,6 +15,9 @@ module Xml.XPath.Arrow
 , mkZ
 , unZ
 
+, bind
+, merge
+
 -- * Selection.
 
 , name
@@ -92,7 +95,7 @@ import Control.Category
 import Data.Function (on)
 import Data.Maybe
 import Data.ByteString (ByteString)
-import Data.Foldable hiding (elem)
+import Data.Foldable hiding (elem, concat)
 import Data.Text (Text)
 import Data.Traversable
 import Prelude hiding (elem, const, (.), id, mapM)
@@ -101,6 +104,8 @@ import Text.XmlHtml (Node, isElement)
 import qualified Text.XmlHtml as X
 
 type Attr = (Text, Text)
+
+type Set a = [Z a]
 
 data Z a = Z
   { focus     :: a
@@ -119,22 +124,25 @@ instance Eq (Z a) where
 instance Ord (Z a) where
   compare = compare `on` _pos
 
--- | Merge a series of ordered lists into a single list. This defintion is a
--- direct copied from the standard Haskell Data.List.sortBy.
+-- | Merge a series of ordered node sets into a single node set. This defintion
+-- is a modified copied from the standard Haskell Data.List.sortBy.
 
-mergeNodeSet :: (a -> a -> Ordering) -> [[a]] -> [a]
-mergeNodeSet cmp = mergeAll
-  where mergeAll []         = []
-        mergeAll [x]        = x
-        mergeAll xs         = mergeAll (mergePairs xs)
-        mergePairs (a:b:xs) = merge a b : mergePairs xs
-        mergePairs xs       = xs
-        merge as@(a:as')
+merge :: [Set a] -> Set a
+merge = mAll
+  where mAll []             = []
+        mAll [x]            = x
+        mAll xs             = mAll (mPairs xs)
+        mPairs (a:b:xs)     = m a b : mPairs xs
+        mPairs xs           = xs
+        m as@(a:as')
               bs@(b:bs')
-          | a `cmp` b == GT = b:merge as  bs'
-          | otherwise       = a:merge as' bs
-        merge [] bs         = bs
-        merge as []         = as
+          | a `compare` b == GT = b:m as  bs'
+          | otherwise           = a:m as' bs
+        m [] bs             = bs
+        m as []             = as
+
+bind :: (Z a -> Set b) -> Set a -> Set b
+bind f = merge . map f
 
 mkZ :: Arrow (~>) => a ~> Z a
 mkZ = arr (\a -> Z a [0] Nothing [] [])
