@@ -110,6 +110,22 @@ data Z a = Z
 
 instance Show a => Show (Z a) where
   show (Z f _ _ _) = "(Z) " ++ show f
+-- | Merge a series of ordered lists into a single list. This defintion is a
+-- direct copied from the standard Haskell Data.List.sortBy.
+
+mergeNodeSet :: (a -> a -> Ordering) -> [[a]] -> [a]
+mergeNodeSet cmp = mergeAll
+  where mergeAll []         = []
+        mergeAll [x]        = x
+        mergeAll xs         = mergeAll (mergePairs xs)
+        mergePairs (a:b:xs) = merge a b : mergePairs xs
+        mergePairs xs       = xs
+        merge as@(a:as')
+              bs@(b:bs')
+          | a `cmp` b == GT = b:merge as  bs'
+          | otherwise       = a:merge as' bs
+        merge [] bs         = bs
+        merge as []         = as
 
 mkZ :: Arrow (~>) => a ~> Z a
 mkZ = arr (\a -> Z a Nothing [] [])
