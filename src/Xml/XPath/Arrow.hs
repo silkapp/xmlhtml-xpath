@@ -8,7 +8,7 @@
   , TemplateHaskell
   #-}
 {- | List arrows for querying, creating and modifying XML/HTML trees.  -}
-module Text.XmlHtml.Arrow
+module Xml.XPath.Arrow
 (
 
   Z (focus)

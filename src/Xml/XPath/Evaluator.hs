@@ -16,7 +16,7 @@ import Text.XmlHtml (Node)
 import Prelude hiding ((.), id, elem, const)
 
 import Text.XmlHtml (nodeText)
-import Text.XmlHtml.Arrow
+import Xml.XPath.Arrow
 import Xml.XPath.Types
 import Xml.XPath.Parser (parser)
 
