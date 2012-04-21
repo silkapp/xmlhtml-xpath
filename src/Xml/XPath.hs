@@ -1,16 +1,11 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Xml.XPath (run, parser) where
+module Xml.XPath
+( evaluate
+, parser
+, printer
+) where
 
-import Control.Arrow
-import Control.Category
-import Control.Arrow.List
-import Data.Text
-import Text.XmlHtml
-
-import Text.XmlHtml.Arrow
-import Xml.XPath.Evaluator
-import Xml.XPath.Parser (parser)
-
-run :: Text -> Node -> [Node]
-run path = runListArrow (unZ . nodeV . evaluate path . arr NodeValue . mkZ)
+import Xml.XPath.Evaluator (evaluate)
+import Xml.XPath.Parser    (parser)
+import Xml.XPath.Printer   (printer)
 

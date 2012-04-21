@@ -9,6 +9,7 @@ module Xml.XPath.Evaluator where
 import Control.Category
 import Control.Arrow
 import Control.Arrow.ArrowF
+import Control.Arrow.List
 import Data.Attoparsec.Text (Number)
 import Data.Text (Text)
 import Text.XmlHtml (Node)
@@ -71,8 +72,11 @@ reindex ar = embed . arr (\xs -> zip [1..] xs) . observe ar
 
 -------------------------------------------------------------------------------
 
-evaluate :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Text -> Value ~> Value
-evaluate path =
+evaluate :: Text -> Node -> [Node]
+evaluate path = runListArrow (unZ . nodeV . run path . arr NodeValue . mkZ)
+
+run :: (ArrowF [] (~>), ArrowChoice (~>), ArrowPlus (~>)) => Text -> Value ~> Value
+run path =
   case parser path of
     Left  e         -> error (show e)
     Right (XPath e) -> arr snd . expression e . (const 1 &&& id)
