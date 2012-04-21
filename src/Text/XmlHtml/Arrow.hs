@@ -89,6 +89,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Arrow.ArrowF
 import Control.Category
+import Data.Function (on)
 import Data.Maybe
 import Data.ByteString (ByteString)
 import Data.Foldable hiding (elem)
@@ -103,13 +104,21 @@ type Attr = (Text, Text)
 
 data Z a = Z
   { focus     :: a
+  , _pos      :: [Int]
   , _parent   :: Maybe (Z Node)
   , _lefts    :: [a]
   , _rights   :: [a]
   } deriving (Functor, Foldable, Traversable)
 
 instance Show a => Show (Z a) where
-  show (Z f _ _ _) = "(Z) " ++ show f
+  show (Z f _ _ _ _) = "(Z) " ++ show f
+
+instance Eq (Z a) where
+  a == b = compare a b == EQ
+
+instance Ord (Z a) where
+  compare = compare `on` _pos
+
 -- | Merge a series of ordered lists into a single list. This defintion is a
 -- direct copied from the standard Haskell Data.List.sortBy.
 
@@ -128,7 +137,7 @@ mergeNodeSet cmp = mergeAll
         merge as []         = as
 
 mkZ :: Arrow (~>) => a ~> Z a
-mkZ = arr (\a -> Z a Nothing [] [])
+mkZ = arr (\a -> Z a [0] Nothing [] [])
 
 unZ :: Arrow (~>) => Z a ~> a
 unZ = arr focus
@@ -144,7 +153,7 @@ down f z = groupSiblings z (f (focus z))
 
 groupSiblings :: Z Node -> [a] -> [Z a]
 groupSiblings z xs =
-      (\(c, before, after) -> Z c (Just z) before after)
+      (\(c, l, r) -> Z c (length l : _pos z) (Just z) l r)
   <$> (\(x, i) -> (x, take i xs, drop (i + 1) xs))
   <$> zip xs [0..]
 
