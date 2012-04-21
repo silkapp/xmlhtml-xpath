@@ -2,8 +2,9 @@
 module Test where
 
 import Text.XmlHtml
-import Prelude hiding ((.), id, elem)
 
+import qualified Data.Text.IO    as T
+import qualified Text.XmlHtml    as X
 import qualified Data.ByteString as B
 
 import Xml.XPath
@@ -12,13 +13,21 @@ main :: IO ()
 main =
   do file <- B.readFile "data/test.html"
 
-     print (parser thePath)
+     let parsed =
+           case parser thePath of
+             Left  e      -> error e
+             Right parsed -> parsed
 
-     case parseHTML "data/test.html" file of
-       Left err  -> error err
-       Right doc -> mapM_ print (run thePath (Element "" [] (docContent doc)))
+     print thePath
+     print parsed
+     T.putStrLn (printer parsed)
 
-  where thePath = "html/body//a[position() > 3 and position() <= 5]"
+--      case parseHTML "data/test.html" file of
+--        Left err  -> error err
+--        Right doc -> mapM_ (print . X.tagName) (evaluate thePath (Element "" [] (docContent doc)))
+
+  where thePath = ".//a/../a[b/c][position(1,//a)]"
+--   where thePath = "(//a/*)[@href='te\"st' or $a > 20]"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
 
