@@ -105,8 +105,6 @@ nameTest (QName  ns) = isA ((== ns) . focus)
 
 axisSpecifier :: (ArrowF [] (~>), ArrowPlus (~>)) => AxisSpecifier -> Z Node ~> Value
 axisSpecifier (NamedAxis axis) = axisName axis
-axisSpecifier NodeAxis         = arr NodeValue
-axisSpecifier AttrAxis         = arr AttrValue . attributes
 
 nodeType :: ArrowF [] (~>) => NodeType -> Z Node ~> Z Node
 nodeType Comment               = isComment

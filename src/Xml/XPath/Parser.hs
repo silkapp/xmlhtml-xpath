@@ -60,8 +60,7 @@ self :: Step
 self = Step (NamedAxis Self) (NodeType Node) []
 
 axisSpecifier :: Parser AxisSpecifier
-axisSpecifier = NamedAxis <$> axisName
-            <|> abbreviatedAxisSpecifier
+axisSpecifier = NamedAxis <$> (axisName <|> abbreviatedAxisSpecifier)
 
 axisName :: Parser AxisName
 axisName = p Ancestor         "ancestor"
@@ -79,8 +78,8 @@ axisName = p Ancestor         "ancestor"
        <|> p Self             "self"
   where p f t = f <$ (token t <* token "::")
 
-abbreviatedAxisSpecifier :: Parser AxisSpecifier
-abbreviatedAxisSpecifier = option (NamedAxis Child) (AttrAxis <$ token "@")
+abbreviatedAxisSpecifier :: Parser AxisName
+abbreviatedAxisSpecifier = option Child (Attribute <$ token "@")
 
 nodeTest :: Parser NodeTest
 nodeTest

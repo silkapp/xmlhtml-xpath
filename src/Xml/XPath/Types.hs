@@ -27,10 +27,7 @@ data NameTest
   | QName  Text
   deriving Show
 
-data AxisSpecifier
-  = NamedAxis AxisName
-  | NodeAxis
-  | AttrAxis
+data AxisSpecifier = NamedAxis AxisName
   deriving Show
 
 data AxisName
