@@ -111,7 +111,7 @@ data Z a = Z
   } deriving (Functor, Foldable, Traversable)
 
 instance Show a => Show (Z a) where
-  show (Z f _ _ _ _) = "(Z) " ++ show f
+  show (Z f p _ _ _) = "(Z) " ++ show p ++ " " ++ show f
 
 instance Eq (Z a) where
   a == b = compare a b == EQ
@@ -153,7 +153,7 @@ down f z = groupSiblings z (f (focus z))
 
 groupSiblings :: Z Node -> [a] -> [Z a]
 groupSiblings z xs =
-      (\(c, l, r) -> Z c (length l : _pos z) (Just z) l r)
+      (\(c, l, r) -> Z c (_pos z ++ [length l]) (Just z) l r)
   <$> (\(x, i) -> (x, take i xs, drop (i + 1) xs))
   <$> zip xs [0..]
 
