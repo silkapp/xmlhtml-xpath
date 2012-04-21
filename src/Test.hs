@@ -19,15 +19,17 @@ main =
              Right parsed -> parsed
 
      print thePath
+     putStrLn "----------------------------------------------"
      print parsed
+     putStrLn "----------------------------------------------"
      T.putStrLn (printer parsed)
+     putStrLn "----------------------------------------------"
 
---      case parseHTML "data/test.html" file of
---        Left err  -> error err
---        Right doc -> mapM_ (print . X.tagName) (evaluate thePath (Element "" [] (docContent doc)))
+     case parseHTML "data/test.html" file of
+       Left err  -> error err
+       Right doc -> mapM_ (print) (evaluate thePath (head (docContent doc)))
 
-  where thePath = ".//a/../a[b/c][position(1,//a)]"
---   where thePath = "(//a/*)[@href='te\"st' or $a > 20]"
+  where thePath = "//a"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
 
