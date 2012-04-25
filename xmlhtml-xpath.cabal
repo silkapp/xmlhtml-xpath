@@ -8,7 +8,7 @@ License-file:     LICENSE
 Author:           Sebastiaan Visser
 Maintainer:       code@silkapp.com
 Build-Type:       Simple
-Cabal-Version:    >= 1.6
+Cabal-Version:    >= 1.9.2
 
 Library
   GHC-Options:      -Wall
@@ -28,5 +28,20 @@ Library
                     Xml.XPath.Arrow
                     Xml.XPath.Evaluator
                     Xml.XPath.Parser
+                    Xml.XPath.Printer
                     Xml.XPath.Types
 
+Test-Suite xpath
+  Type:             exitcode-stdio-1.0
+  Main-Is:          XPath.hs
+  Build-Depends:
+      base            == 4.*
+    , blaze-builder
+    , bytestring
+    , HUnit
+    , test-framework
+    , test-framework-hunit
+    , text
+    , xmlhtml
+    , xmlhtml-xpath
+  Hs-Source-Dirs:   tests
