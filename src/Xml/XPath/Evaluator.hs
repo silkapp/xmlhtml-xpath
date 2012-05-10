@@ -11,7 +11,7 @@ import Control.Arrow
 import Control.Arrow.ArrowF
 import Data.Attoparsec.Text
 import Data.Text (Text)
-import Text.XmlHtml (Node)
+import Text.XmlHtml (Node (TextNode))
 import Prelude hiding ((.), id, elem, const)
 
 import Text.XmlHtml (nodeText)
@@ -27,6 +27,11 @@ data Value
   | TextValue Text
   | NumValue  Number
   deriving Show
+
+valueToNode :: Value -> Node
+valueToNode (NodeValue nz) = focus nz
+valueToNode v              = TextNode (stringValue v)
+
 
 nodeV :: ArrowF [] (~>) => Value ~> Z Node
 nodeV = embed . arr (\n -> case n of NodeValue z -> [z]; _ -> [])

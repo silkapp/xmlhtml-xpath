@@ -1,5 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Xml.XPath (run) where
+module Xml.XPath (run, valueToNode) where
 
 import Control.Arrow
 import Control.Category
@@ -9,5 +9,5 @@ import Text.XmlHtml
 import Text.XmlHtml.Arrow
 import Xml.XPath.Evaluator
 
-run :: Text -> Node -> [Node]
-run path = runListArrow (unZ . nodeV . evaluate path . arr NodeValue . mkZ)
+run :: Text -> Node -> [Value]
+run path = runListArrow (evaluate path . arr NodeValue . mkZ)
