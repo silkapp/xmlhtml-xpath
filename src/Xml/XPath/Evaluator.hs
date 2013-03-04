@@ -21,6 +21,8 @@ import Xml.XPath.Types
 import qualified Data.Text        as T
 import qualified Xml.XPath.Parser as Parser
 
+import Safe
+
 data Value
   = NodeValue (Z Node)
   | AttrValue (Z Attr)
@@ -117,7 +119,11 @@ expression expr =
     Number _ -> go (Is (FunctionCall "position" []) expr)
     _        -> go expr
   where
-    go (Is  a b             ) = arr fst . isA (uncurry eqValue) . (go a &&& go b)
+    go (Is  a b             ) = arr fst . isA ((==EQ) . uncurry cmpValue) . (go a &&& go b)
+    go (Lt  a b             ) = arr fst . isA ((==LT) . uncurry cmpValue) . (go a &&& go b)
+    go (Gt  a b             ) = arr fst . isA ((==GT) . uncurry cmpValue) . (go a &&& go b)
+    go (Lte a b             ) = arr fst . isA ((/=GT) . uncurry cmpValue) . (go a &&& go b)
+    go (Gte a b             ) = arr fst . isA ((/=LT) . uncurry cmpValue) . (go a &&& go b)
     go (Or  a b             ) = go a <+> go b
     go (And a b             ) = arr fst . (go a &&& go b)
     go (Path    p           ) = locationPath p . nodeV
@@ -125,13 +131,15 @@ expression expr =
     go (FunctionCall nm args) = functionCall nm args
     go (Number n            ) = const (NumValue n)
 
-functionCall :: ArrowF [] arr => Text -> [Expr] -> Value `arr` Value
+functionCall :: (ArrowF [] arr) => Text -> [Expr] -> Value `arr` Value
 functionCall "position" _ = arr (NumValue . fromIntegral . (+1)) . position . nodeV
+functionCall "count"    _ = mapF (return . NumValue . fromIntegral . length) id
+functionCall "number"   _ = maybeA . arr (fmap NumValue . numberValue)
 functionCall nm         _ = error $ "functionCall for " ++ T.unpack nm ++ " not implemented."
 
-eqValue :: Value -> Value -> Bool
-eqValue (NumValue n) (NumValue m) = n == m
-eqValue a            b            = stringValue a == stringValue b
+cmpValue :: Value -> Value -> Ordering
+cmpValue (NumValue n) (NumValue m) = compare n m
+cmpValue n            m            = compare (stringValue n) (stringValue m)
 
 stringValue :: Value -> Text
 stringValue (NodeValue a) = nodeText (focus a)
@@ -139,3 +147,6 @@ stringValue (TextValue a) = a
 stringValue (AttrValue a) = snd (focus a)
 stringValue (NumValue  a) = T.pack (show a)
 
+numberValue :: Value -> Maybe Number
+numberValue (NumValue n)  = Just n
+numberValue v             = fmap D ((readMay $ T.unpack $ stringValue v) :: Maybe Double)
