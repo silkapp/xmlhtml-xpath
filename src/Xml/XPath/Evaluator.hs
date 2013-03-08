@@ -131,11 +131,12 @@ expression expr =
     go (FunctionCall nm args) = functionCall nm args
     go (Number n            ) = const (NumValue n)
 
-functionCall :: (ArrowF [] arr) => Text -> [Expr] -> Value `arr` Value
-functionCall "position" _ = arr (NumValue . fromIntegral . (+1)) . position . nodeV
-functionCall "count"    _ = mapF (return . NumValue . fromIntegral . length) id
-functionCall "number"   _ = maybeA . arr (fmap NumValue . numberValue)
-functionCall nm         _ = error $ "functionCall for " ++ T.unpack nm ++ " not implemented."
+functionCall :: (ArrowF [] arr, ArrowPlus arr, ArrowChoice arr) => Text -> [Expr] -> Value `arr` Value
+functionCall "position" _   = arr (NumValue . fromIntegral . (+1)) . position . nodeV
+functionCall "count"    [x] = embed . arr (return . NumValue . fromIntegral . length) . observe (expression x)
+functionCall "count"    _   = error $ "functionCall for count expects exactly one argument."
+functionCall "number"   _   = maybeA . arr (fmap NumValue . numberValue)
+functionCall nm         _   = error $ "functionCall for " ++ T.unpack nm ++ " not implemented."
 
 cmpValue :: Value -> Value -> Ordering
 cmpValue (NumValue n) (NumValue m) = compare n m
