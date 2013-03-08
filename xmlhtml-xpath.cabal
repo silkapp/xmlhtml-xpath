@@ -18,11 +18,11 @@ Library
       base            == 4.*
     , arrow-list      >= 0.6 && < 0.7
     , attoparsec      == 0.10.*
-    , bytestring      == 0.9.*
+    , bytestring      >= 0.9 && < 0.11
     , attoparsec-expr == 0.1
-    , containers      >= 0.3 && < 0.5
+    , containers      >= 0.3 && < 0.6
     , text            == 0.11.*
-    , xmlhtml         == 0.1.*
+    , xmlhtml         == 0.2.*
 
   Exposed-modules:  Xml.XPath
                     Xml.XPath.Arrow
