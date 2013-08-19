@@ -176,5 +176,5 @@ free :: Parser a -> Parser a
 free = (<* many space)
 
 token :: Text -> Parser Text
-token = free . stringCI
+token = free . asciiCI
 
