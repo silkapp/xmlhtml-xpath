@@ -22,7 +22,7 @@ Library
     , attoparsec-expr == 0.1
     , containers      >= 0.3 && < 0.6
     , safe            == 0.3.*
-    , text            == 0.11.*
+    , text            >= 0.11 && < 1.2
     , xmlhtml         == 0.2.*
 
   Exposed-modules:  Text.XmlHtml.Arrow
