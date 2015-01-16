@@ -1,8 +1,9 @@
 module Xml.XPath.Types where
 
+import Prelude hiding (takeWhile)
+
 import Data.Attoparsec.Text
 import Data.Text (Text)
-import Prelude hiding (takeWhile)
 
 newtype XPath = XPath Expr
   deriving Show

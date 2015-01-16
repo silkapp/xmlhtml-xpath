@@ -2,8 +2,8 @@
 module Xml.XPath (run, valueToNode) where
 
 import Control.Arrow
-import Control.Category
 import Control.Arrow.List
+import Control.Category
 import Data.Text
 import Text.XmlHtml
 import Text.XmlHtml.Arrow

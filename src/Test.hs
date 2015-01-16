@@ -1,19 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test where
 
-import Control.Category
-import Control.Arrow
-import Control.Arrow.List
-import Control.Arrow.ArrowF
-import Text.XmlHtml
-import Prelude hiding ((.), id, elem)
+import Prelude hiding (elem, id, (.))
 
+import Control.Arrow
+import Control.Arrow.ArrowF
+import Control.Arrow.List
+import Control.Category
+import Text.XmlHtml
 import qualified Data.ByteString as B
 
 import Text.XmlHtml.Arrow
 import Xml.XPath
-import Xml.XPath.Parser
 import Xml.XPath.Evaluator
+import Xml.XPath.Parser
 
 main :: IO ()
 main =
@@ -28,4 +28,3 @@ main =
   where thePath = "//li[2]"
 
 --  //permission[(canRead = 'true' or canWrite='true') and isAdmin='false']//site
-

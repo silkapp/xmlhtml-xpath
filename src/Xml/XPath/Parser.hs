@@ -1,13 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Xml.XPath.Parser where
 
+import Prelude hiding (takeWhile)
+
 import Control.Applicative
 import Control.Monad
-import Data.Char
-import Data.Attoparsec.Text
 import Data.Attoparsec.Expr
+import Data.Attoparsec.Text
+import Data.Char
 import Data.Text (Text)
-import Prelude hiding (takeWhile)
 
 import qualified Data.Text as T
 

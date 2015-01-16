@@ -1,100 +1,100 @@
 {-# LANGUAGE
-    TypeOperators
-  , Arrows
-  , DeriveFunctor
+    Arrows
   , DeriveFoldable
+  , DeriveFunctor
   , DeriveTraversable
   , FlexibleContexts
   , TemplateHaskell
+  , TypeOperators
   #-}
 {- | List arrows for querying, creating and modifying XML/HTML trees.  -}
 module Text.XmlHtml.Arrow
-(
+  (
 
-  Z (focus)
-, mkZ
-, unZ
+    Z (focus)
+  , mkZ
+  , unZ
 
--- * Selection.
+  -- * Selection.
 
-, name
-, attributes
-, children
-, key
-, value
-, text
+  , name
+  , attributes
+  , children
+  , key
+  , value
+  , text
 
--- * Going up and side-ways.
+  -- * Going up and side-ways.
 
-, parent
-, ancestors
-, root
-, lefts
-, rights
-, siblings
-, position
+  , parent
+  , ancestors
+  , root
+  , lefts
+  , rights
+  , siblings
+  , position
 
--- * Filter based on type.
+  -- * Filter based on type.
 
-, isElem
-, isText
-, isComment
+  , isElem
+  , isText
+  , isComment
 
--- * Filter by name.
+  -- * Filter by name.
 
-, elem
-, attr
-, child
-, hasAttr
+  , elem
+  , attr
+  , child
+  , hasAttr
 
--- * Deep selection.
+  -- * Deep selection.
 
-, deep
-, deepWhen
-, deepText
+  , deep
+  , deepWhen
+  , deepText
 
--- * Creation with only arrow components.
+  -- * Creation with only arrow components.
 
-, toElem
-, toAttr
-, toText
+  , toElem
+  , toAttr
+  , toText
 
--- * Creation with some fixed components.
+  -- * Creation with some fixed components.
 
-, mkElem
-, mkAttr
-, mkAttrValue
-, mkText
+  , mkElem
+  , mkAttr
+  , mkAttrValue
+  , mkText
 
--- * Processing child nodes, attributes and text.
+  -- * Processing child nodes, attributes and text.
 
-, processChildren
-, processChild
-, processDeep
-, processAttrs
-, processAttr
-, processText
+  , processChildren
+  , processChild
+  , processDeep
+  , processAttrs
+  , processAttr
+  , processText
 
--- * Arrows for parsing.
+  -- * Arrows for parsing.
 
-, parseHtml
-, parseXml
+  , parseHtml
+  , parseXml
 
--- * Convenient type for attributes.
-, Attr
-)
-where
+  -- * Convenient type for attributes.
+  , Attr
+  ) where
+
+import Prelude hiding (const, elem, id, mapM, (.))
 
 import Control.Applicative
 import Control.Arrow
 import Control.Arrow.ArrowF
 import Control.Category
-import Data.Maybe
 import Data.ByteString (ByteString)
 import Data.Foldable hiding (elem)
+import Data.Maybe
 import Data.Text (Text)
 import Data.Traversable
-import Prelude hiding (elem, const, (.), id, mapM)
 import Text.XmlHtml (Node, isElement)
 
 import qualified Text.XmlHtml as X
@@ -102,10 +102,10 @@ import qualified Text.XmlHtml as X
 type Attr = (Text, Text)
 
 data Z a = Z
-  { focus     :: a
-  , _parent   :: Maybe (Z Node)
-  , _lefts    :: [a]
-  , _rights   :: [a]
+  { focus   :: a
+  , _parent :: Maybe (Z Node)
+  , _lefts  :: [a]
+  , _rights :: [a]
   } deriving (Functor, Foldable, Traversable)
 
 instance Show a => Show (Z a) where
@@ -273,4 +273,3 @@ parseHtml = mkZ . embed . arr (either (const []) X.docContent . X.parseHTML "")
 
 parseXml :: ArrowF [] arr => ByteString `arr` Z Node
 parseXml = mkZ . embed . arr (either (const []) X.docContent . X.parseXML "")
-

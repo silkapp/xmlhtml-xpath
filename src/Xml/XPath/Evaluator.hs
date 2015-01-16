@@ -1,18 +1,19 @@
 {-# LANGUAGE
-    TypeOperators
-  , FlexibleContexts
+    FlexibleContexts
   , FlexibleInstances
   , OverloadedStrings
+  , TypeOperators
   #-}
 module Xml.XPath.Evaluator where
 
-import Control.Category
+import Prelude hiding (const, elem, id, (.))
+
 import Control.Arrow
 import Control.Arrow.ArrowF
+import Control.Category
 import Data.Attoparsec.Text
 import Data.Text (Text)
 import Text.XmlHtml (Node (TextNode))
-import Prelude hiding ((.), id, elem, const)
 
 import Text.XmlHtml (nodeText)
 import Text.XmlHtml.Arrow
