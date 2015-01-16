@@ -1,5 +1,5 @@
 name:             xmlhtml-xpath
-version:          0.2.3.5
+version:          0.2.3.6
 description:      XPath support for xmlhtml.
 synopsis:         XPath support for xmlhtml.
 category:         Data, Xml
@@ -10,7 +10,10 @@ maintainer:       code@silk.co
 build-type:       Simple
 cabal-version:    >= 1.6
 
-extra-source-files: LICENSE
+extra-source-files:
+  CHANGELOG.md
+  LICENSE
+  README.md
 
 source-repository head
   type:              git
