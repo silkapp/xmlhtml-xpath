@@ -27,7 +27,7 @@ library
     Xml.XPath.Types
   build-depends:
       base == 4.*
-    , arrow-list >= 0.6 && < 0.7
+    , arrow-list == 0.7
     , attoparsec >= 0.10 && < 0.13
     , attoparsec-expr == 0.1.*
     , bytestring >= 0.9 && < 0.11

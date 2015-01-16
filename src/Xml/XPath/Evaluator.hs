@@ -9,7 +9,7 @@ module Xml.XPath.Evaluator where
 import Prelude hiding (const, elem, id, (.))
 
 import Control.Arrow
-import Control.Arrow.ArrowF
+import Control.Arrow.ListLike.Class
 import Control.Category
 import Data.Attoparsec.Text
 import Data.Text (Text)
@@ -36,22 +36,22 @@ valueToNode (NodeValue nz) = focus nz
 valueToNode v              = TextNode (stringValue v)
 
 
-nodeV :: ArrowF [] arr => Value `arr` Z Node
+nodeV :: ArrowListLike [] arr => Value `arr` Z Node
 nodeV = embed . arr (\n -> case n of NodeValue z -> [z]; _ -> [])
 
-attrV :: ArrowF [] arr => Value `arr` Z Attr
+attrV :: ArrowListLike [] arr => Value `arr` Z Attr
 attrV = embed . arr (\n -> case n of AttrValue z -> [z]; _ -> [])
 
-textV :: ArrowF [] arr => Value `arr` Text
+textV :: ArrowListLike [] arr => Value `arr` Text
 textV = embed . arr (\n -> case n of TextValue t -> [t]; _ -> [])
 
-numberV :: ArrowF [] arr => Value `arr` Number
+numberV :: ArrowListLike [] arr => Value `arr` Number
 numberV = embed . arr (\n -> case n of NumValue m -> [m]; _ -> [])
 
 
 -------------------------------------------------------------------------------
 
-evaluate :: (ArrowF [] arr, ArrowChoice arr, ArrowPlus arr) => Text -> Value `arr` Value
+evaluate :: (ArrowListLike [] arr, ArrowChoice arr, ArrowPlus arr) => Text -> Value `arr` Value
 evaluate path =
   case parser path of
     Left  e -> error (show e)
@@ -62,7 +62,7 @@ parser = parseOnly Parser.expr
 
 -------------------------------------------------------------------------------
 
-locationPath :: (ArrowF [] arr, ArrowChoice arr, ArrowPlus arr) => LocationPath -> Z Node `arr` Value
+locationPath :: (ArrowListLike [] arr, ArrowChoice arr, ArrowPlus arr) => LocationPath -> Z Node `arr` Value
 locationPath path =
   case path of
     Relative xs -> go xs
@@ -71,35 +71,35 @@ locationPath path =
         go [x]    = step x
         go (x:xs) = go xs . nodeV . step x
 
-step :: (ArrowF [] arr, ArrowChoice arr, ArrowPlus arr) => Step -> Z Node `arr` Value
+step :: (ArrowListLike [] arr, ArrowChoice arr, ArrowPlus arr) => Step -> Z Node `arr` Value
 step (Step axis test exprs)
   = foldr (\e b -> filterA (expression e) . b) id exprs
   . filterA (nodeTest test)
   . axisSpecifier axis
 
-nodeTest :: (ArrowF [] arr, ArrowPlus arr, ArrowChoice arr) => NodeTest -> Value `arr` Value
+nodeTest :: (ArrowListLike [] arr, ArrowPlus arr, ArrowChoice arr) => NodeTest -> Value `arr` Value
 nodeTest (NameTest t) = filterA (nameTest t . name . nodeV)
                     <+> filterA (nameTest t . key  . attrV)
 nodeTest (NodeType t) = filterA (nodeType t .        nodeV)
 nodeTest (PiTest   _) = none
 
-nameTest :: ArrowF [] arr => NameTest -> Z Text `arr` Z Text
+nameTest :: ArrowListLike [] arr => NameTest -> Z Text `arr` Z Text
 nameTest Star        = id
 nameTest (NsStar ns) = isA ((== ns) . T.takeWhile (/= ':') . focus)
 nameTest (QName  ns) = isA ((== ns) . focus)
 
-axisSpecifier :: (ArrowF [] arr, ArrowPlus arr) => AxisSpecifier -> Z Node `arr` Value
+axisSpecifier :: (ArrowListLike [] arr, ArrowPlus arr) => AxisSpecifier -> Z Node `arr` Value
 axisSpecifier (NamedAxis axis) = axisName axis
 axisSpecifier NodeAxis         = arr NodeValue
 axisSpecifier AttrAxis         = arr AttrValue . attributes
 
-nodeType :: ArrowF [] arr => NodeType -> Z Node `arr` Z Node
+nodeType :: ArrowListLike [] arr => NodeType -> Z Node `arr` Z Node
 nodeType Comment               = isComment
 nodeType Text                  = isText
 nodeType ProcessingInstruction = none
 nodeType Node                  = id
 
-axisName :: (ArrowF [] arr, ArrowPlus arr) => AxisName -> Z Node `arr` Value
+axisName :: (ArrowListLike [] arr, ArrowPlus arr) => AxisName -> Z Node `arr` Value
 axisName Ancestor         = arr NodeValue . ancestors
 axisName AncestorOrSelf   = arr NodeValue . (ancestors <+> id)
 axisName Attribute        = arr AttrValue . attributes
@@ -114,7 +114,7 @@ axisName Parent           = arr NodeValue . parent
 axisName PrecedingSibling = arr NodeValue . lefts
 axisName Self             = arr NodeValue . id
 
-expression :: (ArrowF [] arr, ArrowPlus arr, ArrowChoice arr) => Expr -> Value `arr` Value
+expression :: (ArrowListLike [] arr, ArrowPlus arr, ArrowChoice arr) => Expr -> Value `arr` Value
 expression expr =
   case expr of
     Number _ -> go (Is (FunctionCall "position" []) expr)
@@ -132,7 +132,7 @@ expression expr =
     go (FunctionCall nm args) = functionCall nm args
     go (Number n            ) = const (NumValue n)
 
-functionCall :: (ArrowF [] arr, ArrowPlus arr, ArrowChoice arr) => Text -> [Expr] -> Value `arr` Value
+functionCall :: (ArrowListLike [] arr, ArrowPlus arr, ArrowChoice arr) => Text -> [Expr] -> Value `arr` Value
 functionCall "position" _   = arr (NumValue . fromIntegral . (+1)) . position . nodeV
 functionCall "count"    [x] = embed . arr (return . NumValue . fromIntegral . length) . observe (expression x)
 functionCall "count"    _   = error $ "functionCall for count expects exactly one argument."
