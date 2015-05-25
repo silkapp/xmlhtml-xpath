@@ -1,5 +1,5 @@
 name:             xmlhtml-xpath
-version:          0.2.3.6
+version:          0.2.3.7
 description:      XPath support for xmlhtml.
 synopsis:         XPath support for xmlhtml.
 category:         Data, Xml
@@ -31,7 +31,7 @@ library
   build-depends:
       base == 4.*
     , arrow-list == 0.7
-    , attoparsec >= 0.10 && < 0.13
+    , attoparsec >= 0.10 && < 0.14
     , attoparsec-expr == 0.1.*
     , bytestring >= 0.9 && < 0.11
     , containers >= 0.3 && < 0.6
